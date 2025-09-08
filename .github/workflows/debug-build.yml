@@ -1,0 +1,53 @@
+name: Debug Build
+
+on:
+  push:
+    tags: [ 'debug-*' ]
+
+jobs:
+  debug:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Show environment info
+      run: |
+        echo "=== System Info ==="
+        uname -a
+        echo "=== Xcode Info ==="
+        xcodebuild -version
+        xcode-select -p
+        echo "=== Available Xcode versions ==="
+        ls -la /Applications/ | grep -i xcode || echo "No Xcode found in /Applications/"
+        echo "=== Current directory ==="
+        pwd
+        ls -la
+        echo "=== Build script ==="
+        ls -la build.sh
+        cat build.sh | head -20
+        
+    - name: Test build script help
+      run: |
+        chmod +x build.sh
+        ./build.sh --help
+        
+    - name: Test simple build
+      run: |
+        echo "=== Testing build script ==="
+        ./build.sh -c Release
+        
+    - name: Show build results
+      run: |
+        echo "=== Build directory contents ==="
+        ls -la build/ || echo "No build directory"
+        if [ -d "build/LookinServer.framework" ]; then
+          echo "✅ Framework found"
+          ls -la build/LookinServer.framework/
+          lipo -info build/LookinServer.framework/LookinServer
+        else
+          echo "❌ Framework not found"
+          echo "=== All build files ==="
+          find . -name "*.framework" -type d | head -10
+        fi
