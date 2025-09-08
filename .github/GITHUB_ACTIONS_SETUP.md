@@ -70,13 +70,15 @@
 ### 可选配置
 
 #### 自定义 Xcode 版本
-修改工作流中的 Xcode 版本选择：
+工作流默认使用 GitHub Actions runner 上的默认 Xcode 版本（通常是最新稳定版）。
+
+如需指定特定版本，可在步骤中添加：
 ```yaml
-- name: Select Xcode version
+- name: Select Xcode version  
   run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 ```
 
-可用版本：Xcode 15.0.1, 15.1, 15.2, 15.3, 15.4 (默认), 16.1, 16.2
+可用版本：Xcode 15.0.1, 15.1, 15.2, 15.3, 15.4, 16.1, 16.2
 
 ## 构建产物
 
