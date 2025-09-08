@@ -112,7 +112,10 @@ for ARCH in $ARCHITECTURES; do
         BUILD_DIR="$BUILD_DIR" \
         BUILD_ROOT="$BUILD_DIR" \
         ONLY_ACTIVE_ARCH=NO \
-        SKIP_INSTALL=NO
+        SKIP_INSTALL=NO \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGN_IDENTITY="" \
+        PROVISIONING_PROFILE=""
     
     # 查找构建产物
     FRAMEWORK_PATH=$(find "$BUILD_DIR" -name "${PROJECT_NAME}.framework" -type d | head -1)
