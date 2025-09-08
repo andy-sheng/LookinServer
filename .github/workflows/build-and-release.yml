@@ -1,0 +1,106 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ develop, main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ develop ]
+
+env:
+  PROJECT_NAME: LookinServer
+  SCHEME: LookinServer
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+      
+    - name: Show Xcode version
+      run: xcodebuild -version
+      
+    - name: Cache build artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          build
+        key: ${{ runner.os }}-xcode-${{ matrix.configuration }}-${{ hashFiles('**/*.xcodeproj') }}
+        restore-keys: |
+          ${{ runner.os }}-xcode-${{ matrix.configuration }}-
+          ${{ runner.os }}-xcode-
+          
+    - name: Make build script executable
+      run: chmod +x build.sh
+      
+    - name: Build framework
+      run: ./build.sh -c ${{ matrix.configuration }}
+      
+    - name: Verify build output
+      run: |
+        ls -la build/
+        if [ -d "build/LookinServer.framework" ]; then
+          echo "✅ Framework built successfully"
+          lipo -info build/LookinServer.framework/LookinServer
+        else
+          echo "❌ Framework build failed"
+          exit 1
+        fi
+        
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: LookinServer-${{ matrix.configuration }}-${{ github.sha }}
+        path: build/LookinServer.framework
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+      
+    - name: Make build script executable
+      run: chmod +x build.sh
+      
+    - name: Build Release framework
+      run: ./build.sh -c Release
+      
+    - name: Create framework archive
+      run: |
+        cd build
+        zip -r ../LookinServer-${{ github.ref_name }}.zip LookinServer.framework
+        cd ..
+        
+    - name: Calculate checksums
+      run: |
+        shasum -a 256 LookinServer-${{ github.ref_name }}.zip > LookinServer-${{ github.ref_name }}.zip.sha256
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          LookinServer-${{ github.ref_name }}.zip
+          LookinServer-${{ github.ref_name }}.zip.sha256
+        generate_release_notes: true
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

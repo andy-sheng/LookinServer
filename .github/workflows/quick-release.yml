@@ -1,0 +1,78 @@
+name: Quick Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  quick-release:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Validate version format
+      run: |
+        if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ Invalid version format. Use semantic versioning (e.g., 1.0.0)"
+          exit 1
+        fi
+        
+    - name: Check if tag exists
+      run: |
+        if git tag -l | grep -q "^v${{ github.event.inputs.version }}$"; then
+          echo "❌ Tag v${{ github.event.inputs.version }} already exists"
+          exit 1
+        fi
+        
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+      
+    - name: Make build script executable
+      run: chmod +x build.sh
+      
+    - name: Build Release framework
+      run: ./build.sh -c Release
+      
+    - name: Create framework archive
+      run: |
+        cd build
+        zip -r ../LookinServer-v${{ github.event.inputs.version }}.zip LookinServer.framework
+        cd ..
+        
+    - name: Calculate checksums
+      run: |
+        shasum -a 256 LookinServer-v${{ github.event.inputs.version }}.zip > LookinServer-v${{ github.event.inputs.version }}.zip.sha256
+        
+    - name: Create and push tag
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+        git push origin "v${{ github.event.inputs.version }}"
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        name: Release v${{ github.event.inputs.version }}
+        files: |
+          LookinServer-v${{ github.event.inputs.version }}.zip
+          LookinServer-v${{ github.event.inputs.version }}.zip.sha256
+        generate_release_notes: true
+        draft: false
+        prerelease: ${{ github.event.inputs.prerelease }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
