@@ -73,8 +73,10 @@
 修改工作流中的 Xcode 版本选择：
 ```yaml
 - name: Select Xcode version
-  run: sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
+  run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 ```
+
+可用版本：Xcode 15.0.1, 15.1, 15.2, 15.3, 15.4 (默认), 16.1, 16.2
 
 ## 构建产物
 
